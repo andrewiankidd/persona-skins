@@ -41,30 +41,14 @@ large hat brim, long hair past the shoulders) is still flattened onto the
 nearest face, and the outer layer cannot show what a model has under an
 overhang.
 
-## Requirements
-
-- Paper 26.3 or later, Java 25
-- Geyser-Spigot and Floodgate on the same server
-
 ## Install
 
-Put the jar from the [releases](../../releases) in `plugins/` and restart.
+Paper 26.3+ on Java 25, with Geyser-Spigot and Floodgate on the same server:
+put the jar from the [releases](../../releases) in `plugins/` and restart.
 
-`plugins/PersonaSkins/config.yml`:
-
-| Key | Default | |
-|---|---|---|
-| `render` | `custom` | `custom`: persona and custom-geometry skins only. `all`: every Bedrock skin. |
-| `mineskin.api-key` | empty | Optional; raises MineSkin's rate limit. Also read from `MINESKIN_API_KEY`. |
-| `mineskin.visibility` | `unlisted` | `unlisted` or `public`; `private` needs a key. |
-| `keep-pngs` | `true` | Keep each render's PNG beside its cache entry. |
-
-## Commands
-
-`/personaskins refresh <player>` renders a Bedrock player's skin again,
-ignoring the cache. `/personaskins dump <player>` writes the skin's Bedrock
-texture, geometry and Java render to `plugins/PersonaSkins/dumps/<player>/`.
-Both need `personaskins.admin` (ops by default).
+The [installation guide](docs/installation.md) covers the rest: running it in
+a container, configuration, MineSkin keys, what Java and Bedrock players each
+see, the `/personaskins` commands for checking a render, and troubleshooting.
 
 ## Building
 

@@ -20,7 +20,9 @@ import java.util.Locale;
  */
 public record BedrockSkin(
         Texture texture,
+        String skinId,
         String geometryJson,
+        String resourcePatch,
         String geometryName,
         boolean persona,
         boolean slim,
@@ -43,11 +45,14 @@ public record BedrockSkin(
         String armSize = (String) call(data, "getArmSize");
         String colour = (String) call(data, "getSkinColor");
 
+        String skinId = (String) call(data, "getSkinId");
         String geometryJson = geometry == null ? "" : new String(geometry, StandardCharsets.UTF_8).trim();
+        String patchJson = patch == null ? "" : new String(patch, StandardCharsets.UTF_8);
         String name = geometryName(patch);
         boolean slim = "slim".equalsIgnoreCase(armSize)
                 || (name != null && name.toLowerCase(Locale.ROOT).endsWith("slim"));
-        return new BedrockSkin(new Texture(width, height, image), geometryJson, name, persona, slim, parseColour(colour));
+        return new BedrockSkin(new Texture(width, height, image), skinId == null ? "" : skinId, geometryJson, patchJson,
+                name, persona, slim, parseColour(colour));
     }
 
     private static Object call(Object target, String method) throws ReflectiveOperationException {

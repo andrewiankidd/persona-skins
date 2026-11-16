@@ -17,6 +17,10 @@ import org.geysermc.floodgate.api.FloodgateApi;
 import org.geysermc.floodgate.api.event.skin.SkinApplyEvent;
 import org.geysermc.geyser.api.GeyserApi;
 import org.geysermc.geyser.api.connection.GeyserConnection;
+import org.geysermc.geyser.api.event.EventRegistrar;
+import org.geysermc.geyser.api.event.bedrock.SessionSkinApplyEvent;
+import org.geysermc.geyser.api.skin.Skin;
+import org.geysermc.geyser.api.skin.SkinGeometry;
 import org.jspecify.annotations.NonNull;
 
 import java.io.IOException;
@@ -68,6 +72,7 @@ public final class PersonaSkinsPlugin extends JavaPlugin implements Listener {
         worker = Executors.newSingleThreadExecutor(r -> new Thread(r, "PersonaSkins"));
 
         FloodgateApi.getInstance().getEventBus().subscribe(SkinApplyEvent.class, this::onFloodgateSkin);
+        GeyserApi.api().eventBus().subscribe(EventRegistrar.of(this), SessionSkinApplyEvent.class, this::onGeyserSkin);
         getServer().getPluginManager().registerEvents(this, this);
         getLogger().info("Loaded " + cache.size() + " rendered skins; rendering "
                 + (renderAll ? "every Bedrock skin" : "persona and custom-geometry skins"));
@@ -91,6 +96,32 @@ public final class PersonaSkinsPlugin extends JavaPlugin implements Listener {
         MineSkin.Signed ours = key == null ? null : cache.get(key);
         if (ours != null) {
             event.newSkin(new SkinData(ours.value(), ours.signature()));
+        }
+    }
+
+    /**
+     * Geyser draws every player for Bedrock viewers from the Java skin on
+     * their profile, which for a Bedrock player is now the flattened one.
+     * Bedrock clients can draw the real thing, so give them the player's own
+     * texture and geometry back.
+     */
+    private void onGeyserSkin(SessionSkinApplyEvent event) {
+        if (!event.bedrock()) {
+            return;
+        }
+        GeyserConnection connection = GeyserApi.api().connectionByUuid(event.uuid());
+        if (connection == null) {
+            return;
+        }
+        try {
+            BedrockSkin skin = BedrockSkin.read(connection);
+            if (skin.geometryJson().isEmpty() && skin.resourcePatch().isEmpty()) {
+                return;
+            }
+            event.skin(new Skin(skin.skinId(), skin.texture().rgba()));
+            event.geometry(new SkinGeometry(skin.resourcePatch(), skin.geometryJson()));
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            getLogger().log(Level.FINE, "Could not restore " + event.username() + "'s Bedrock skin", e);
         }
     }
 

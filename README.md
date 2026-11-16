@@ -28,6 +28,9 @@ PersonaSkins draws the whole model instead:
    to be worn once by a real account; MineSkin does that.
 4. It applies the result in place of Floodgate's, now and every time Floodgate
    would apply its own.
+5. Bedrock players watching keep seeing the real 3D skin: Geyser would draw
+   them from the flattened Java one, so PersonaSkins hands Geyser the
+   player's own texture and geometry back for Bedrock viewers.
 
 Results are cached by the Bedrock skin's hash in `plugins/PersonaSkins/cache/`,
 so a skin is rendered and uploaded once; anyone joining with the same skin

@@ -127,6 +127,39 @@ class FlattenerTest {
         assertEquals(64, g.textureWidth);
     }
 
+    @Test
+    void theStandardModelIsStandard() {
+        assertTrue(Flattener.isStandard(StandardModels.classic()));
+        assertTrue(Flattener.isStandard(StandardModels.slim()));
+        String hair = """
+            {"format_version": "1.8.0", "geometry.test:geometry.humanoid.custom": {
+              "bones": [{"name": "hat", "parent": "head", "pivot": [0, 24, 0],
+                         "cubes": [{"origin": [-4, 24, -4], "size": [8, 8, 8], "uv": [32, 0], "inflate": 0.5},
+                                   {"origin": [-5, 30, -5], "size": [10, 4, 10], "uv": [0, 0]}]}]
+            }}
+            """;
+        assertTrue(!Flattener.isStandard(Geometry.parse(hair, "geometry.test")));
+    }
+
+    /**
+     * Renders a skin saved by /personaskins dump, when -Ppersona.dump=<dir> is
+     * given: for checking real skins, which are not ours to commit.
+     */
+    @Test
+    void renderADump() throws IOException {
+        String dir = System.getProperty("persona.dump");
+        if (dir == null || dir.isEmpty()) {
+            return;
+        }
+        Path d = Path.of(dir);
+        java.awt.image.BufferedImage img = javax.imageio.ImageIO.read(d.resolve("bedrock.png").toFile());
+        int[] px = img.getRGB(0, 0, img.getWidth(), img.getHeight(), null, 0, img.getWidth());
+        String json = Files.readString(d.resolve("geometry.json"));
+        Geometry g = Geometry.parse(json, null);
+        boolean slim = Files.readString(d.resolve("info.txt")).contains("slim: true");
+        save("dump", Flattener.flatten(g, Texture.fromArgb(img.getWidth(), img.getHeight(), px), slim, 0xff808080));
+    }
+
     static void save(String name, int[] argb) throws IOException {
         String dir = System.getProperty("persona.out");
         if (dir == null) {

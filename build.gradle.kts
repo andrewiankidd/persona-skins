@@ -31,6 +31,8 @@ tasks.test {
     useJUnitPlatform()
     // Tests write their renders here, for looking at.
     systemProperty("persona.out", layout.buildDirectory.dir("test-renders").get().asFile.path)
+    // -Ppersona.dump=<dir> renders a /personaskins dump as well.
+    systemProperty("persona.dump", providers.gradleProperty("persona.dump").getOrElse(""))
 }
 
 tasks.processResources {

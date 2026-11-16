@@ -57,8 +57,7 @@ public final class Flattener {
 
     /** Bones that are never part of the body: what is held, worn as armour, or a cape. */
     private static final Set<String> NOT_BODY = Set.of(
-            "cape", "elytra", "rightitem", "leftitem", "helmet", "bodyarmor", "belt",
-            "rightarmarmor", "leftarmarmor", "rightlegging", "leftlegging", "rightboot", "leftboot");
+            "cape", "elytra", "rightitem", "leftitem");
 
     static {
         for (Part p : Part.values()) {
@@ -70,10 +69,59 @@ public final class Flattener {
     private Flattener() {
     }
 
-    /** The bone names of the standard model, which Floodgate already converts. */
-    public static boolean isStandardBone(String name) {
-        String n = name.toLowerCase(Locale.ROOT);
-        return STANDARD.containsKey(n) || NOT_BODY.contains(n) || n.equals("root") || n.equals("waist");
+    /**
+     * Whether a geometry is just the standard player model, box for box, which
+     * Floodgate's own conversion handles. Marketplace skins keep the standard
+     * bone names but hang their own boxes from them (and from the armour
+     * bones), so this compares the boxes, not the names.
+     */
+    public static boolean isStandard(Geometry g) {
+        Map<String, Bone> classic = bonesByName(StandardModels.classic());
+        Map<String, Bone> slim = bonesByName(StandardModels.slim());
+        for (Bone b : g.bones) {
+            if (b.neverRender || !b.hasGeometry()) {
+                continue;
+            }
+            String n = b.name.toLowerCase(Locale.ROOT);
+            if (NOT_BODY.contains(n)) {
+                continue;
+            }
+            if (!b.polygons.isEmpty() || !(sameBoxes(b, classic.get(n)) || sameBoxes(b, slim.get(n)))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static Map<String, Bone> bonesByName(Geometry g) {
+        Map<String, Bone> out = new HashMap<>();
+        for (Bone b : g.bones) {
+            out.put(b.name.toLowerCase(Locale.ROOT), b);
+        }
+        return out;
+    }
+
+    private static boolean sameBoxes(Bone b, Bone standard) {
+        if (standard == null || b.cubes.size() != standard.cubes.size()) {
+            return false;
+        }
+        for (int i = 0; i < b.cubes.size(); i++) {
+            Cube c = b.cubes.get(i), s = standard.cubes.get(i);
+            if (c.boxUv == null || !close(c.min, s.min) || !close(c.max, s.max) || !close(c.boxUv, s.boxUv)
+                    || !c.transform.isIdentity()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean close(double[] a, double[] b) {
+        for (int i = 0; i < a.length; i++) {
+            if (Math.abs(a[i] - b[i]) > 0.01) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
@@ -90,6 +138,7 @@ public final class Flattener {
         for (Part part : Part.values()) {
             Cube base = cubeOf(target, part.base);
             Cube outer = cubeOf(target, part.outer);
+            double[][] box = sourceBox(geometry, part, base);
             for (Face face : Face.values()) {
                 List<Primitive> seen = new ArrayList<>(parts.get(part));
                 // Long hair hangs over the back and shoulders; the head's
@@ -97,20 +146,58 @@ public final class Flattener {
                 if (part == Part.BODY && face != Face.UP) {
                     seen.addAll(parts.get(Part.HEAD));
                 }
-                drawFace(out, base, face, seen, true, fallback);
-                drawFace(out, outer, face, seen, false, fallback);
+                drawFace(out, base, box, face, seen, true, fallback);
+                drawFace(out, outer, box, face, seen, false, fallback);
             }
         }
         return out;
     }
 
-    private static void drawFace(int[] out, Cube box, Face face, List<Primitive> seen, boolean baseLayer, int fallback) {
-        double[] rect = box.faceRect(face);
+    /**
+     * The box a part's rays start from: the Bedrock model's own head, body, arm
+     * or leg, which need not be where or the size the Java model's is (a
+     * marketplace character may have a lower head or a wider chest). It is the
+     * bounds of the boxes in the part's base bone, the body's taking in the
+     * waist's; the Java box when there are none.
+     */
+    private static double[][] sourceBox(Geometry g, Part part, Cube fallback) {
+        double[] min = {Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE};
+        double[] max = {-Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE};
+        boolean any = false;
+        for (Bone b : g.bones) {
+            String n = b.name.toLowerCase(Locale.ROOT);
+            boolean core = n.equals(part.base.toLowerCase(Locale.ROOT)) || (part == Part.BODY && n.equals("waist"));
+            if (!core || b.neverRender) {
+                continue;
+            }
+            for (Cube c : b.cubes) {
+                for (int corner = 0; corner < 8; corner++) {
+                    double[] p = c.transform.point(new double[] {
+                        (corner & 1) == 0 ? c.min[0] : c.max[0],
+                        (corner & 2) == 0 ? c.min[1] : c.max[1],
+                        (corner & 4) == 0 ? c.min[2] : c.max[2]});
+                    for (int i = 0; i < 3; i++) {
+                        min[i] = Math.min(min[i], p[i]);
+                        max[i] = Math.max(max[i], p[i]);
+                    }
+                }
+                any = true;
+            }
+        }
+        if (!any || max[0] - min[0] < 0.5 || max[1] - min[1] < 0.5 || max[2] - min[2] < 0.5) {
+            return new double[][] {fallback.min.clone(), fallback.max.clone()};
+        }
+        return new double[][] {min, max};
+    }
+
+    private static void drawFace(int[] out, Cube target, double[][] box, Face face, List<Primitive> seen,
+                                 boolean baseLayer, int fallback) {
+        double[] rect = target.faceRect(face);
         int x0 = (int) Math.round(rect[0]), y0 = (int) Math.round(rect[1]);
         int w = (int) Math.round(rect[2]), h = (int) Math.round(rect[3]);
-        // The outer layer's box is inflated, but its texels stand for the same
-        // places as the base box's; cast from the base surface for both.
-        double[] min = baseMin(box, baseLayer), max = baseMax(box, baseLayer);
+        // Both layers' texels stand for the same places on the part, so both
+        // cast from the surface of the Bedrock model's own box for it.
+        double[] min = box[0], max = box[1];
         double[] n = Geometry.normal(face);
         double[] dir = {-n[0], -n[1], -n[2]};
         for (int ty = 0; ty < h; ty++) {
@@ -151,16 +238,6 @@ public final class Flattener {
                 }
             }
         }
-    }
-
-    private static double[] baseMin(Cube box, boolean baseLayer) {
-        double inflate = baseLayer ? 0 : (box.max[0] - box.min[0] - box.size[0]) / 2;
-        return new double[] {box.min[0] + inflate, box.min[1] + inflate, box.min[2] + inflate};
-    }
-
-    private static double[] baseMax(Cube box, boolean baseLayer) {
-        double inflate = baseLayer ? 0 : (box.max[0] - box.min[0] - box.size[0]) / 2;
-        return new double[] {box.max[0] - inflate, box.max[1] - inflate, box.max[2] - inflate};
     }
 
     private static Cube cubeOf(Geometry g, String bone) {

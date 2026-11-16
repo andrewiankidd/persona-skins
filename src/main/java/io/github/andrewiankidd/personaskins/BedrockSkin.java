@@ -90,7 +90,7 @@ public record BedrockSkin(
 
     /**
      * Whether Floodgate's own conversion loses something: a persona skin, or a
-     * geometry with surfaces outside the standard player model's bones.
+     * geometry that is not box for box the standard player model.
      */
     public boolean hasCustomGeometry() {
         if (persona) {
@@ -100,15 +100,10 @@ public record BedrockSkin(
             return false;
         }
         try {
-            for (Geometry.Bone b : geometry().bones) {
-                if (b.hasGeometry() && !b.neverRender && !Flattener.isStandardBone(b.name)) {
-                    return true;
-                }
-            }
+            return !Flattener.isStandard(geometry());
         } catch (RuntimeException e) {
             return false;
         }
-        return false;
     }
 
     /** What identifies this skin: its texture, geometry and which geometry it uses. */

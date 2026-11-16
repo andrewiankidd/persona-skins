@@ -50,6 +50,8 @@ public final class PersonaSkinsPlugin extends JavaPlugin implements Listener {
     /** Each online Bedrock player's skin key, once read. */
     private final Map<UUID, String> playerKeys = new ConcurrentHashMap<>();
     private final Map<String, Boolean> inFlight = new ConcurrentHashMap<>();
+    /** Bedrock players whose own skin has been handed back to Bedrock viewers, for logging once. */
+    private final java.util.Set<UUID> restored = ConcurrentHashMap.newKeySet();
     private ExecutorService worker;
     private MineSkin mineSkin;
     private Path cacheDir;
@@ -120,6 +122,9 @@ public final class PersonaSkinsPlugin extends JavaPlugin implements Listener {
             }
             event.skin(new Skin(skin.skinId(), skin.texture().rgba()));
             event.geometry(new SkinGeometry(skin.resourcePatch(), skin.geometryJson()));
+            if (restored.add(event.uuid())) {
+                getLogger().info("Showing Bedrock viewers " + event.username() + "'s own skin");
+            }
         } catch (ReflectiveOperationException | RuntimeException e) {
             getLogger().log(Level.FINE, "Could not restore " + event.username() + "'s Bedrock skin", e);
         }
@@ -139,6 +144,7 @@ public final class PersonaSkinsPlugin extends JavaPlugin implements Listener {
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
         playerKeys.remove(event.getPlayer().getUniqueId());
+        restored.remove(event.getPlayer().getUniqueId());
     }
 
     private void handle(Player player, boolean force) {

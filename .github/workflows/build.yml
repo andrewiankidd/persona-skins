@@ -1,0 +1,61 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - uses: gradle/actions/setup-gradle@v5
+
+      # A tag v1.2.3 builds version 1.2.3; anything else keeps the snapshot version.
+      - name: Build and test
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            ./gradlew build -Pversion="${GITHUB_REF_NAME#v}"
+          else
+            ./gradlew build
+          fi
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: persona-skins
+          path: build/libs/*.jar
+
+      # The flattener's renders from the tests, for looking at.
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: test-renders
+          path: build/test-renders/
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          name: persona-skins
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: '*.jar'
+          generate_release_notes: true

@@ -1,0 +1,18 @@
+# PersonaSkins: renders a Bedrock player's 3D skin onto a Java skin's two
+# layers, uploads it through MineSkin, and applies it in place of Floodgate's.
+
+# Which Bedrock skins to render:
+#   custom  - persona skins and skins with geometry beyond the standard player
+#             model (the ones Floodgate shows without hair, hats and so on)
+#   all     - every Bedrock skin
+render: custom
+
+mineskin:
+  # Optional. Without a key MineSkin still works, with a lower rate limit.
+  # The MINESKIN_API_KEY environment variable is used when this is empty.
+  api-key: ""
+  # unlisted or public; private needs an API key.
+  visibility: unlisted
+
+# Save each render's PNG beside its cache entry, for checking the result.
+keep-pngs: true

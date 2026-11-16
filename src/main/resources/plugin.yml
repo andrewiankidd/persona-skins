@@ -1,0 +1,14 @@
+name: PersonaSkins
+version: '${version}'
+main: io.github.andrewiankidd.personaskins.PersonaSkinsPlugin
+api-version: '1.21'
+description: Shows Bedrock persona and custom-geometry skins to Java players, hair and all.
+depend: [floodgate, Geyser-Spigot]
+commands:
+  personaskins:
+    description: Re-render or dump a Bedrock player's skin.
+    usage: /personaskins <refresh|dump> <player>
+    permission: personaskins.admin
+permissions:
+  personaskins.admin:
+    default: op

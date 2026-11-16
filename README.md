@@ -3,6 +3,13 @@
 A Paper plugin that shows Bedrock players' 3D skins to Java players, hair and
 all.
 
+| Seen from Java | Seen from Bedrock |
+|---|---|
+| ![A Bedrock player seen from Java: the hair is flattened onto the skin's outer layer](docs/images/java.jpeg) | ![The same player seen from Bedrock: the original 3D skin, spiked hair and all](docs/images/bedrock.jpeg) |
+
+The same Bedrock player (on the left) on the same server. Java shows the PersonaSkins render:
+the model's hair, flattened onto the head. Bedrock shows the original model.
+
 Bedrock players join a Java server through [Geyser](https://geysermc.org) and
 [Floodgate](https://github.com/GeyserMC/Floodgate), and Floodgate gives Java
 players a Java version of each Bedrock skin. A Java skin is a flat texture on a
